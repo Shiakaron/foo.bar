@@ -1,6 +1,4 @@
 import numpy as np
-#import pickle
-#import os
 
 """
 There's some unrest in the minion ranks: minions with ID numbers like "1", "42", and other "good" numbers have been lording it over the poor minions who are

@@ -18,4 +18,38 @@ continue walking until they reach the end, finally leaving the hallway. In the a
 
 Write a function solution(s) which takes a string representing employees walking along a hallway and returns the number of times the employees will salute. s will contain at least 1 and at
 most 100 characters, each one of -, >, or <.
+
+Test cases
+==========
+Your code should pass the following test cases.
+Note that it may also be run against hidden test cases not shown here.
+
+-- Python cases --
+Input:
+solution.solution(">----<")
+Output:
+    2
 """
+
+def solution(str):
+    """
+    return the number of salutes of minions walking along the hallway
+    "-" empty part of hallway
+    ">" minion moving right
+    "<" minion moving left
+
+    1: remove all "-" from string because they are redudant
+    2: count the total minions moving left, mleft
+    3: iterate over the string to count the number of mlefts a minion moving right will encounter
+        a. every time you find a minion moving left, subtract it from the number of mlefts
+        b. every time you find a minion moving right, add to the salutes the minions moving left
+    """
+    salutes = 0
+    str = str.replace("-","")
+    mleft = str.count("<")
+    for minion in str:
+        if minion == "<":
+            mleft -= 1
+        else:
+            salutes += mleft
+    return salutes*2
