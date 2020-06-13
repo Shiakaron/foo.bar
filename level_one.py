@@ -1,0 +1,43 @@
+import numpy as np
+#import pickle
+#import os
+
+"""
+There's some unrest in the minion ranks: minions with ID numbers like "1", "42", and other "good" numbers have been lording it over the poor minions who are
+stuck with more boring IDs. To quell the unrest, Commander Lambda has tasked you with reassigning everyone new, random IDs based on her Completely Foolproof Scheme.
+
+She's concatenated the prime numbers in a single long string: "2357111317192329...". Now every minion must draw a number from a hat. That number is the starting index in that
+string of primes, and the minion's new ID number will be the next five digits in the string. So if a minion draws "3", their ID number will be "71113".
+
+Help the Commander assign these IDs by writing a function solution(n) which takes in the starting index n of Lambda's string of all primes, and returns the next five digits in the string.
+Commander Lambda has a lot of minions, so the value of n will always be between 0 and 10000.
+"""
+
+def SieveOfEratosthenes(n):
+    """
+    Create a boolean array "prime[0..n]" and initialize
+    all entries it as true. A value in prime[i] will
+    finally be false if i is Not a prime, else true.
+    """
+    prime = [True for i in range(n+1)]
+    p = 2
+    while (p * p <= n):
+        # If prime[p] is not changed, then it is a prime
+        if (prime[p] == True):
+            # Update all multiples of p
+            for i in range(p * p, n+1, p):
+                prime[i] = False
+        p += 1
+
+    l1 = []
+    for p in range(2, n+1):
+        if prime[p]:
+            l1.append(str(p))
+    return "".join(l1)
+
+def solution(i):
+    """
+    from the prime_string return the ith until (i+4)th elements
+    """
+    prime_string = SieveOfEratosthenes(30000)
+    return prime_string[i:i+5]
