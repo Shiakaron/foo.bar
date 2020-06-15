@@ -32,13 +32,38 @@ solution.solution('2', '1')
 Output:
     1
 """
-def solution(M, F):
+def solution(x,y):
     """
+    Starting from the needed configuration we will tracerse backward by continuously subtracting the smallest of the arguments from the other until they are equal. If equality occurs at (1,1) then the configuration is possible and the number of operations gives the generations needed. If equality occurs at a number greater than 1 then the configuration is "impossible"
+    Notes:
+        a. if either x or y get reduced to 1 then a solution is possible
+        b. we speed the search when x and y are very different by using the modulo operator
     """
-    if M == 1 and F == 1:
-        return 0
-    gen=0
-    (m, f) = (1, 1)
-
-
+    M = int(x)
+    F = int(y)
+    equality = False
+    gen = 0
+    while(not equality):
+        genplus = 0
+        if M >= F:
+            if M%F != 0:
+                genplus = M//F
+                M %= F
+            elif F == 1:
+                genplus = M-1
+                M = 1
+                equality = True
+            else:
+                return "impossible"
+        elif F > M:
+            if F%M != 0:
+                genplus = F//M
+                F %= M
+            elif M == 1:
+                genplus = F-1
+                F = 1
+                equality = True
+            else:
+                return "impossible"
+        gen += genplus
     return str(gen)
