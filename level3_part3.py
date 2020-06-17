@@ -1,101 +1,165 @@
-def get_n_matrix(m, N, unstable):
-    """
-    """
-    n = []
-    for i in range(N):
-        n.append(m[i][:])
-        if unstable[i] == 0: # i.e. stable
-            n[i][i] = 1
-    return n
+from fractions import *
 
-def get_T_matrix(n, sums, N):
-    """
-    """
-    T = []
-    for i in range(N):
-        temp = 1
-        for j in range(N):
-            if j!=i:
-                temp *= sums[j]
-        copy = n[i][:]
-        for j in range(N):
-            copy[j] *= temp
-        T.append(copy)
-    return T
+def standard_form(m, N):
+    m_rowsums = [sum(m[i]) for i in range(N)]
+    stable = []
+    unstable = []
+    for ind, row in enumerate(m):
+        if m_rowsums[ind] == 0:
+            stable.append(ind)
+        else:
+            unstable.append(ind)
+    order = stable + unstable
+    p = []
+    n = 0
+    for i in stable:
+        p.append(m[i][:])
+        p[n][n] = 1
+        n += 1
+    for i in unstable:
+        temp = []
+        for j in order:
+            temp.append(Fraction(m[i][j], m_rowsums[i]))
+        p.append(temp)
+    return p, len(stable)
 
-def vector_matrix_multiplication(list1, listoflists2):
-    """
-    """
-    x = []
-    for i in range(len(list1)):
-        y = 0
-        for j in range(len(listoflists2)):
-            y += list1[j]*listoflists2[j][i]
-        x.append(y)
-    return x
+def R_Q_matrices(p, stablecount, N):
+    R, Q = [], []
+    for i in range(stablecount,N):
+        addR, addQ = [], []
+        for j in range(stablecount):
+            addR.append(p[i][j])
+        for j in range(stablecount,N):
+            addQ.append(p[i][j])
+        R.append(addR)
+        Q.append(addQ)
+    return R, Q
 
-def find_gcd(x, y):
-    while(y):
-        x, y = y, x % y
-    return x
+def F_matrix(Q):
+    siz = len(Q)
+    A = []
+    for i in range(siz):
+        add = []
+        for j in range(siz):
+            if i==j:
+                add.append(1-Q[i][j])
+            else:
+                add.append(-Q[i][j])
+        A.append(add)
+    return getMatrixInverse(A)
+
+def lcmm(l):
+		return reduce(lambda x, y: lcm(x, y), l)
+
+def matmult(a,b):
+    zip_b = zip(*b)
+    return [[sum(ele_a*ele_b for ele_a, ele_b in zip(row_a, col_b))
+             for col_b in zip_b] for row_a in a]
+
+def transposeMatrix(m):
+    t = []
+    for r in range(len(m)):
+        tRow = []
+        for c in range(len(m[r])):
+            if c == r:
+                tRow.append(m[r][c])
+            else:
+                tRow.append(m[c][r])
+        t.append(tRow)
+    return t
+
+def getMatrixMinor(m,i,j):
+    return [row[:j] + row[j+1:] for row in (m[:i]+m[i+1:])]
+
+def getMatrixDeterminant(m):
+    #base case for 2x2 matrix
+    if len(m) == 2:
+        return m[0][0]*m[1][1]-m[0][1]*m[1][0]
+
+    determinant = 0
+    for c in range(len(m)):
+        determinant += ((-1)**c)*m[0][c]*getMatrixDeterminant(getMatrixMinor(m,0,c))
+    return determinant
+
+def getMatrixInverse(m):
+    determinant = getMatrixDeterminant(m)
+    #special case for 2x2 matrix:
+    if len(m) == 2:
+        return [[m[1][1]/determinant, -1*m[0][1]/determinant],
+                [-1*m[1][0]/determinant, m[0][0]/determinant]]
+
+    #find matrix of cofactors
+    cofactors = []
+    for r in range(len(m)):
+        cofactorRow = []
+        for c in range(len(m)):
+            minor = getMatrixMinor(m,r,c)
+            cofactorRow.append(((-1)**(r+c)) * getMatrixDeterminant(minor))
+        cofactors.append(cofactorRow)
+    cofactors = transposeMatrix(cofactors)
+    for r in range(len(cofactors)):
+        for c in range(len(cofactors)):
+            cofactors[r][c] = cofactors[r][c]/determinant
+    return cofactors
+
+def list_lcm(lis):
+    num1 = lis[0]
+    num2 = lis[1]
+    lcm = find_lcm(num1, num2)
+    for i in range(2, len(lis)):
+        lcm = find_lcm(lcm, lis[i])
+    return lcm
+
+def find_lcm(num1, num2):
+    if(num1>num2):
+        num = num1
+        den = num2
+    else:
+        num = num2
+        den = num1
+    rem = num % den
+    while(rem != 0):
+        num = den
+        den = rem
+        rem = num % den
+    gcd = den
+    lcm = int(int(num1 * num2)/int(gcd))
+    return lcm
 
 def solution(m):
-    """
-    """
     N = len(m) # size of m matrix
-    m_rowsums = [sum(m[i]) for i in range(N)] # holds the sum of each row in m matrix
 
-    unstable = [] # 1,0 list. 1=unstable, 0=stable
-    count_stable_states = 0
-    for i in range(N):
-        if m_rowsums[i] == 0:
-            unstable.append(0) # false
-            count_stable_states += 1
-        else:
-            unstable.append(1) # true
+    if N == 1:
+        return [1,1]
 
-    if count_stable_states == 1:
-        return [1, 1]
+    p, stablecount = standard_form(m, N)
 
-    n = get_n_matrix(m, N, unstable)
-    n_rowsums = [sum(n[i]) for i in range(N)]
+    if stablecount == 1:
+        return [1,1]
 
-    T = get_T_matrix(n, n_rowsums, N)
+    R, Q = R_Q_matrices(p, stablecount, N)
 
-    composition = [1]+[0]*(N-1)
+    F = F_matrix(Q)
 
-    history = []
-    finished = False
-    while(not finished):
-        history.append(composition)
-        composition = vector_matrix_multiplication(composition[:], T)
-        #print(composition)
-        finished = True
-        for i in range(1,N):
-            if unstable[i] and composition[i] != 0:
-                finished = False
+    FR = matmult(F,R)
 
-    ret = []
-    for i in range(1,N):
-        if not unstable[i]:
-            ret.append(composition[i])
-    ret.append(sum(ret))
+    enums, denoms = [], []
+    for frac in FR[0]:
+        enums.append(frac.numerator)
+        denoms. append(frac.denominator)
 
-    num1 = ret[0]
-    num2 = ret[1]
-    gcd = find_gcd(num1, num2)
-    for i in range(2, len(ret)):
-        gcd = find_gcd(gcd, ret[i])
+    lcm = list_lcm(denoms)
 
-    for i in range(len(ret)):
-        ret[i] = ret[i]//gcd
+    answer = [val*lcm//denoms[ind] for ind, val in enumerate(enums)]
+    answer.append(sum(answer))
+    return(answer)
 
-    return ret
 
-solution([
-[1, 1, 1]
-[1, 0, 1]
-[0, 0, 0])
+
+
+
+
+
 
 solution([
 [0, 2, 1, 0, 0],
