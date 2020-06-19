@@ -1,5 +1,4 @@
 """
-
 Distract the Guards
 ===================
 
@@ -95,7 +94,6 @@ def solution(banana_list):
     N = len(banana_list)
     if N == 1:
         return 1
-
 
     paircount = [] # keeps the number of pairs possible for ith guard
     pairmap = {} # map where key=ith guard and val=list of valid pairs
