@@ -211,25 +211,3 @@ def solution(m):
     answer = [val*lcm//denoms[ind] for ind, val in enumerate(enums)]
     answer.append(sum(answer))
     return(answer)
-
-
-
-
-
-
-
-
-solution([
-[0, 2, 1, 0, 0],
-[0, 0, 0, 3, 4],
-[0, 0, 0, 0, 0],
-[0, 0, 0, 0, 0],
-[0, 0, 0, 0, 0]])
-
-solution([
-[0, 1, 0, 0, 0, 1],
-[4, 0, 0, 3, 2, 0],
-[0, 0, 0, 0, 0, 0],
-[0, 0, 0, 0, 0, 0],
-[0, 0, 0, 0, 0, 0],
-[0, 0, 0, 0, 0, 0]])
