@@ -45,340 +45,59 @@ solution.solution([0, 1], [4, 5], [[0, 0, 4, 6, 0, 0], [0, 0, 5, 2, 0, 0], [0, 0
 Output:
     16
 """
-
-def combine_vetices(a, b, g):
-    """
-    returns the graph after combining the two vertices a,b
-    """
-    N = len(g)
-    ret = []
-    if (a > b):
-        temp = a
-        a = b
-        b = temp
-
-    for i in range(N-1):
-        temp = []
-        for j in range(N-1):
-            if i<b:
-                if i!=a:
-                    if j < b:
-                        if j!=a:
-                            temp.append(g[i][j])
-                        else: # j=a
-                            temp.append(g[i][a]+g[i][b])
-                    else: # j>=b
-                        temp.append(g[i][j+1])
-                else: # i=a
-                    if j < b:
-                        if j!= a:
-                            temp.append(g[a][j] + g[b][j])
-                        else: #j=a => leave the diagonal zero
-                            temp.append(0)
-                    else: # j>=b
-                        temp.append(g[a][j+1] + g[b][j+1])
-            else: # i>=b
-                if j < b:
-                    if j!=a:
-                        temp.append(g[i+1][j])
-                    else: # j=a
-                        temp.append(g[i+1][a]+g[i+1][b])
-                else: # j>=b
-                    temp.append(g[i+1][j+1])
-        ret.append(temp)
-    return ret
-
-def deep_copy(lsl):
-    copy = []
-    for ls in lsl:
-        rowcopy = ls[:]
-        copy.append(ls)
-    return copy
-
-def fix_ordering(graph, source_row, sink_row):
-    """
-    changes the ordering of the graph such that the source is the 1st row and the sink is the last
-    """
-    N = len(graph)
-    if (source_row==0 and sink_row==N-1):
-        return graph
-
-    ret = []
-    order = [source_row]
-    for i in range(N):
-        if i != source_row and i != sink_row:
-            order.append(i)
-    order.append(sink_row)
-    print(order)
-    for i in order:
-        temp = []
-        for j in order:
-            temp.append(graph[i][j])
-        ret.append(temp)
-    return ret
-
-def get_graph(entrances, exits, paths):
-    """
-    1. We ignore any outgoing edges from the sinks (exits), any ingoing edges to sources (entrances) and any edges (paths) connecting back to the same vertex (room)
-    2. We want to combine entrances (and exits) to a single mega-entrance (and mega-exit)
-    3. Order the rows in the graph such that the first is the source and the last is the sink
-    """
-    N = len(paths)
-    graph = []
-    for ind, val in enumerate(paths):
-        temp = val[:]
-        if ind in exits:
-            temp = [0]*N
-        else:
-            for j in entrances:
-                temp[j] = 0
-        temp[ind] = 0
-        graph.append(temp)
-
-    sources = entrances[:]
-    sinks = exits[:]
-    sources.sort()
-    sinks.sort()
-
-    while(len(sources)>1):
-        graph = combine_vetices(sources[0],sources[-1],deep_copy(graph))
-        source_row = sources.pop(-1)
-        for ind, sink_row in enumerate(sinks):
-            if sink_row>source_row:
-                sinks[ind] -= 1
-
-    while(len(sinks)>1):
-        graph = combine_vetices(sinks[0],sinks[-1],deep_copy(graph))
-        sink_row = sinks.pop(-1)
-        if sources[0]>sink_row:
-            sources[0] -= 1
-
-    graph =  fix_ordering(graph, sources[0], sinks[0])
-
-    return graph
-
-def zero_lsl(siz):
-    ret = []
-    for i in range(N):
-        ret.append([0]*N)
-    return ret
-
-def identify_levels(g):
-    """
-    identify levels - distance from source - using bfs
-    In the case that there is no path to the sink vertex then we return an empty list
-    The source and sink technically shouldnt be assigned a level so I will "tag" them by setting source = 0 and the sink = N, where N=len(g).
-    """
-    N = len(g)
-    ret = [0]*N # holds the level of each vertex(row). Initialised to zero for all vertices.
-    explored = []
-    level = 0
-    queue = [0]
-    while(len(queue)>0):
-        newbreadth = []
-        for val in queue:
-            if val not in explored:
-                vertex = g[val]
-                for ind, e in enumerate(vertex):
-                    if e>0:
-                        newbreadth.append(ind)
-                explored.append(val)
-                ret[val] = level
-        queue = newbreadth[:]
-        level += 1
-
-    if ret[-1] == 0:
-        ret = []
-    else:
-        ret[-1] = N
-
-    return ret
-
-def dfs_source_to_sink(c, ls):
-    """
-    dfs to find possible path from source to sink. the minimum capacity of an edge will determine the augmenting flow
-    """
-    N = len(c)
-    path = [0]
-    stack = [] # to explore
-    dead_ends = []
-    capacities = []
-    level = 1
-    while(len(path)>0):
-        vertex = path[-1]
-        row = c[vertex]
-        if vertex == N-1:
-            break
-
-        wayforward = False
-        for ind, val in enumerate(row):
-            if (val>0 and ind not in dead_ends and (ls[ind] == level or ind == (N-1))):
-                wayforward = True
-                if ind not in stack:
-                    stack.append(ind)
-
-        if wayforward:
-            next = stack.pop()
-            path.append(next)
-            capacities.append(row[next])
-            level += 1
-        else:
-            dead_ends.append(path.pop())
-            if capacities != []:
-                capacities.pop()
-            level -= 1
-
-    if path == []:
-        return [], 0
-    else:
-        return path, min(capacities)
-
-def update_rem_cap(rem_cap, path, bottleneck):
-    """
-    given the possible path and the bottleneck, we update the remaining capacity of the graph
-    """
-    P = len(path)
-    for n in range(P-1):
-        v0 = path[n]
-        v1 = path[n+1]
-        rem_cap[v0][v1] -= bottleneck
-        rem_cap[v1][v0] += bottleneck
-    return rem_cap
-
 def solution(entrances, exits, paths):
     """
-    Will implement Dinic's algorithm to identify the maximum flow from the sources (entrances) to the sinks (exits). The reaosn I chose this algorithm instead of the simplier Ford-Fulkerson is because of the high possible values of flow (corridor capacity) and the small number of vertices (rooms).
     """
-    if exits == [] or entrances == [] or paths == []:
-        return 0
+    total_flow = 0
+    remaining = paths[:]
 
-    graph = get_graph(entrances, exits, paths) # process the input before beginning the algorithm
-    N = len(graph)
-    flow = 0
-    remaining_capacity = deep_copy(graph)
+    prev_flow = -1
 
-    while(True):
-        levels = identify_levels(remaining_capacity)
-        if levels == []:
-            break
+    while prev_flow != total_flow:
+        prev_flow = total_flow
 
-        while(True):
-            possible_path, bottleneck = dfs_source_to_sink(remaining_capacity, levels)
-            if possible_path == []:
-                break
-            else:
-                flow += bottleneck
-                remaining_capacity = update_rem_cap(remaining_capacity[:], possible_path, bottleneck)
-    return flow
+        for j in entrances:
+            node = j
+            visited = []
+            path = []
+            while True:
+                # if node is an exit find the bottleneck flow through the path and update the remaining capacity
+                if node in exits:
+                    path.append(node)
+                    bottleneck = 2000001
+                    for ind in range(len(path)-1):
+                        bottleneck = min(remaining[path[ind]][path[ind+1]], bottleneck)
+                    total_flow += bottleneck
+                    for ind in range(len(path)-1):
+                        remaining[path[ind]][path[ind+1]] -= bottleneck
+                        remaining[path[ind+1]][path[ind]] += bottleneck
+                    break
 
-def print_lsl(X):
-    print("X:")
-    for ind, row in enumerate(X):
-        print(ind, row)
+                found = False
+                visited.append(node)
+                # let's get greedy
+                maximum = 0
+                index = 0
+                for ind, val in enumerate(remaining[node]):
+                    if ind not in visited and val>maximum:
+                        maximum = val
+                        index = ind
+                        found = True
+
+                # if theres an unvisited neighbour, append path with current node and set the next node to expore
+                if found:
+                    path.append(node)
+                    node = index
+                # else, if theres no unexplored neighbour and the path is empty then there is no path from this source
+                elif not path:
+                    break
+                # else, backtrack
+                else:
+                    node = path.pop()
+
+    return total_flow
+
 
 # foo_bar visible tests
-# solution([0, 1], [4, 5], [[0, 0, 4, 6, 0, 0], [0, 0, 5, 2, 0, 0], [0, 0, 0, 0, 4, 4], [0, 0, 0, 0, 6, 6], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]])
-# solution([0], [3], [[0, 7, 0, 0], [0, 0, 6, 0], [0, 0, 0, 8], [9, 0, 0, 0]])
-
-# check 4: passed. total flow is 11
-# solution([0],[5],[[0,6,5,0,0,0],[0,0,0,0,0,10],[0,4,0,3,0,0],[0,0,0,0,2,0],[0,0,0,0,0,1],[0,0,0,0,0,0]])
-# x=[[0,6,5,0,0,0],[0,0,0,0,0,10],[0,4,0,3,0,0],[0,0,0,0,2,0],[0,0,0,0,0,1],[0,0,0,0,0,0]]
-# levels = identify_levels(x)
-# print(levels)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# x = update_rem_cap(x[:], possible_path, bottleneck)
-# print_lsl(x)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# x = update_rem_cap(x[:], possible_path, bottleneck)
-# print_lsl(x)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# x = update_rem_cap(x[:], possible_path, bottleneck)
-# print_lsl(x)
-# levels = identify_levels(x)
-# print(levels)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# x = update_rem_cap(x[:], possible_path, bottleneck)
-# print_lsl(x)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# levels = identify_levels(x)
-# print(levels)
-
-
-# check 3: passed. total flow is 4000000
-# solution([0],[3],[[0,2000000,2000000,0],[0,0,1,2000000],[0,0,0,2000000],[0,0,0,0]])
-#
-# check 2: passed. total flow is 19
-# solution([0],[5],[[0,10,10,0,0,0],[0,0,2,4,8,0],[0,0,0,0,9,0],[0,0,0,0,0,10],[0,0,0,6,0,10],[0,0,0,0,0,0]])
-# x = [
-# [0,10,10,0,0,0],
-# [0,0,2,4,8,0],
-# [0,0,0,0,9,0],
-# [0,0,0,0,0,10],
-# [0,0,0,6,0,10],
-# [0,0,0,0,0,0]]
-# levels = identify_levels(x)
-# print(levels)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# x = update_rem_cap(x[:], possible_path, bottleneck)
-# print_lsl(x)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# x = update_rem_cap(x[:], possible_path, bottleneck)
-# print_lsl(x)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# x = update_rem_cap(x[:], possible_path, bottleneck)
-# print_lsl(x)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# levels = identify_levels(x)
-# print(levels)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# x = update_rem_cap(x[:], possible_path, bottleneck)
-# print_lsl(x)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-
-# check 1: passed. total flow is 30
-# solution([0],[10],[[0,5,10,15,0,0,0,0,0,0,0],[0,0,0,0,10,0,0,0,0,0,0],[0,15,0,0,0,20,0,0,0,0,0],[0,0,0,0,0,0,25,0,0,0,0],[0,0,0,0,0,25,0,10,0,0,0],[0,0,0,5,0,0,0,0,30,0,0],[0,0,0,0,0,0,0,0,20,10,0],[0,0,0,0,0,0,0,0,0,0,5],[0,0,0,0,15,0,0,0,0,15,15],[0,0,0,0,0,0,0,0,0,0,10],[0,0,0,0,0,0,0,0,0,0,0]])
-# x = [
-# [0,5,10,15,0,0,0,0,0,0,0],
-# [0,0,0,0,10,0,0,0,0,0,0],
-# [0,15,0,0,0,20,0,0,0,0,0],
-# [0,0,0,0,0,0,25,0,0,0,0],
-# [0,0,0,0,0,25,0,10,0,0,0],
-# [0,0,0,5,0,0,0,0,30,0,0],
-# [0,0,0,0,0,0,0,0,20,10,0],
-# [0,0,0,0,0,0,0,0,0,0,5],
-# [0,0,0,0,15,0,0,0,0,15,15],
-# [0,0,0,0,0,0,0,0,0,0,10],
-# [0,0,0,0,0,0,0,0,0,0,0]]
-# levels = identify_levels(x)
-# print(levels)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# x = update_rem_cap(x[:], possible_path, bottleneck)
-# print_lsl(x)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# x = update_rem_cap(x[:], possible_path, bottleneck)
-# print_lsl(x)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# x = update_rem_cap(x[:], possible_path, bottleneck)
-# print_lsl(x)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# x = update_rem_cap(x[:], possible_path, bottleneck)
-# print_lsl(x)
-# possible_path, bottleneck = dfs_source_to_sink(x, levels)
-# print(possible_path, bottleneck)
-# # levels = identify_levels(x)
-# # print(levels)
+print(solution([0, 1], [4, 5], [[0, 0, 4, 6, 0, 0], [0, 0, 5, 2, 0, 0], [0, 0, 0, 0, 4, 4], [0, 0, 0, 0, 6, 6], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]]))
+print(solution([0], [3], [[0, 7, 0, 0], [0, 0, 6, 0], [0, 0, 0, 8], [9, 0, 0, 0]]))
